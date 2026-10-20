@@ -11,6 +11,7 @@
  */
 
 #include <zephyr/dt-bindings/adc/nrf-saadc.h>
+#include <zephyr/dt-bindings/regulator/nrf5x.h>
 
 /*
  * Flash, as the Adafruit UF2 bootloader (0.6.0, no SoftDevice) lays it out:
@@ -120,6 +121,22 @@
 		zephyr,resolution = <12>;
 		zephyr,oversampling = <4>;
 	};
+};
+
+/*
+ * Both DC/DC stages on: REG1 (VDD -> core/radio) roughly halves the radio's
+ * battery current, REG0 (VDDH -> VDD) saves another 10-20 % with the battery on
+ * VDDH. Each needs its inductor on the board (DCC for REG1, DCCH for REG0);
+ * without it the app does not run. Recover with a double-tap on RST (the
+ * bootloader runs before this takes effect) and drop the stage that lacks it.
+ * Zephyr's soc.c reads these at boot: reg1's mode, reg0's status.
+ */
+&reg1 {
+	regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
+};
+
+&reg0 {
+	status = "okay";
 };
 
 &uart0 {
