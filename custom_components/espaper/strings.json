@@ -16,7 +16,7 @@
     },
     "abort": {
       "already_configured": "This display is already configured.",
-      "no_devices_found": "No ESPaper displays have been seen yet. The panel advertises for about two seconds a minute, so wait a moment and try again."
+      "no_devices_found": "No ESPaper displays have been seen yet. Make sure the panel is powered and in range, then try again."
     }
   },
   "entity": {

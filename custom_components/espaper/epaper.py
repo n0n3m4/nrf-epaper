@@ -66,7 +66,7 @@ STATE_DONE, STATE_ERROR = 4, 5
 FLAG_GRAY4 = 1 << 1
 FLAG_DEFLATE = 1 << 2
 
-# Largest ATT payload NimBLE will accept (MTU 256 minus the 3-byte write
+# Largest ATT payload the firmware will accept (MTU 256 minus the 3-byte write
 # header), and the 4-byte offset each data chunk carries.
 MAX_ATT_PAYLOAD = 253
 DATA_HEADER_LEN = 4
@@ -311,7 +311,7 @@ if __name__ == "__main__":
             del argv[i : i + 2]
         args = [a for a in argv if a != "--mono"]
         text = Path(args[0]).read_text() if args else "# Hello"
-        # The board advertises for ~2 s per minute, so scan for a full cycle.
+        # The board advertises every 1-1.5 s; the timeout is generous headroom.
         device = await BleakScanner.find_device_by_filter(
             lambda _d, adv: SVC_UUID.lower() in [u.lower() for u in adv.service_uuids],
             timeout=90.0,

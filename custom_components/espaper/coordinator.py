@@ -1,13 +1,13 @@
-"""Renders Markdown and pushes it the next time the panel wakes.
+"""Renders Markdown and pushes it the next time the panel can be caught.
 
-The board advertises for ~2 s and then deep-sleeps ~60 s, so an upload cannot
-be scheduled against the panel -- but it does not have to be. A connect attempt
+The board advertises every 1-1.5 s, and HA only hears of it through adverts
+that are stale by the time they arrive, so an upload cannot be scheduled
+against the panel -- but it does not have to be. A connect attempt
 is a 20 s net rather than an instant: the controller holds the request pending
 and latches onto the peer's first advertisement in hardware. So the coordinator
 simply keeps a net open, re-arming as each one expires, until the panel walks
-into it. No prediction of the next wake: the phase of the last sighting, the
-learned advertising interval and the panel's own clock all drift, and every
-mis-aimed net used to cost a whole cycle.
+into it. No prediction of the next advert: the phase of the last sighting,
+the advertising interval and the panel's own clock all drift.
 
 It does that only while an upload is outstanding, and only while the panel is
 online -- a connection attempt is not free on an ESPHome Bluetooth proxy, which
@@ -64,7 +64,7 @@ STATUS_UPLOADING = "uploading"
 # that come back instantly, which would otherwise spin.
 MIN_DELAY = 2
 
-# Five missed wake cycles. Past this the panel is off, flat or out of range, and
+# Five minutes unheard. Past this the panel is off, flat or out of range, and
 # attempts stop: on an ESPHome proxy each one occupies one of about three
 # connection slots and pauses the scanning everything else on it depends on.
 # Only the (free) advertisement history is watched, on this cadence.
@@ -98,7 +98,7 @@ class EPaperCoordinator:
         self.last_error: str | None = None
         self.last_upload: datetime | None = None
         # Whether the panel has been heard from recently enough to be worth
-        # connecting to. Not whether it is awake -- it almost never is.
+        # connecting to. Not whether it is connected -- it almost never is.
         self.online = False
         self.last_seen: datetime | None = None
 
@@ -431,15 +431,15 @@ class EPaperCoordinator:
                 gray4,
             )
         except Exception as err:  # noqa: BLE001
-            # Expected while the board is in its ~60 s deep sleep: it is only
-            # reachable for about two seconds per cycle. Deliberately every
+            # Expected whenever a net expires without catching the panel.
+            # Deliberately every
             # exception, not a tuple: bleak raises BleakError, which descends
             # from Exception and not from OSError, and anything escaping this
             # background task strands the status at "uploading" with no retry
             # armed -- the panel then never updates again until a restart.
             _LOGGER.debug("espaper %s: upload failed: %s", self.address, err)
-            # Not catching the panel is the normal case -- it is connectable for
-            # about two seconds a minute -- so a connect that timed out is not
+            # Not catching the panel in one net is normal, so a connect that
+            # timed out is not
             # worth painting the card red over. An EPaperError is different: the
             # panel answered and the frame was refused. The offline sensor is
             # what says the panel is genuinely not there.

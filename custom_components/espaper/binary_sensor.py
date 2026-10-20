@@ -1,7 +1,7 @@
 """Whether the panel is still around.
 
-Not whether it is awake -- it is awake about two seconds a minute, and a sensor
-that spent 97% of its life "off" would be useless. This is the slower question:
+Not whether it is connected -- it almost never is, and a sensor that spent its
+life "off" would be useless. This is the slower question:
 has the panel been heard from recently enough that a frame sent now will get
 there. It is also what stops the coordinator connecting to a panel that is in a
 drawer, which on an ESPHome proxy costs a connection slot everything else on it

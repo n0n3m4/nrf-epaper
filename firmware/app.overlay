@@ -1,0 +1,119 @@
+/*
+ * Pro Micro nRF52840 (nice!nano v2 pinout) driving the SSD1683 panel.
+ *
+ *   SCK  P1.13  D15      CS   P0.17  D2      RST  P0.22  D4
+ *   MOSI P0.10  D16      DC   P0.20  D3      BUSY P0.24  D5
+ *   VCC pin, switched on by P0.13
+ *
+ * None of these are touched by the Adafruit bootloader (LED P0.15, RST P0.18)
+ * and the board's own UART pins (P0.06/P0.08) stay free. P0.10 is uart0's RX
+ * in the board DTS, hence uart0 off; the console is USB CDC when enabled.
+ */
+
+/*
+ * Flash, as the Adafruit UF2 bootloader (0.6.0, no SoftDevice) lays it out:
+ * MBR at 0, application from 0x1000 (CONFIG_FLASH_LOAD_OFFSET, set by the
+ * board), bootloader from 0xF4000. The board's default table is MCUboot's and
+ * puts storage at 0xF8000, inside the bootloader, so it is replaced. UF2 blocks
+ * above 0xAD000 are refused by that bootloader, which bounds the application.
+ */
+/ {
+	chosen {
+		zephyr,code-partition = &code_partition;
+	};
+};
+
+/delete-node/ &boot_partition;
+/delete-node/ &slot0_partition;
+/delete-node/ &slot1_partition;
+/delete-node/ &storage_partition;
+
+&flash0 {
+	partitions {
+		code_partition: partition@1000 {
+			label = "application";
+			reg = <0x00001000 0x000ac000>;
+		};
+
+		/* One page holds the "painted" flag; see main.cpp. */
+		storage_partition: partition@ec000 {
+			label = "storage";
+			reg = <0x000ec000 0x00008000>;
+		};
+	};
+};
+
+/ {
+	zephyr,user {
+		dc-gpios = <&gpio0 20 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio0 22 GPIO_ACTIVE_LOW>;
+		busy-gpios = <&gpio0 24 GPIO_ACTIVE_HIGH>;
+	};
+
+	/* The VCC header pin is behind a switch on P0.13; on means the panel has power. */
+	vcc_ext: regulator-vcc-ext {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc-ext";
+		enable-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+		regulator-boot-on;
+		startup-delay-us = <20000>;
+	};
+};
+
+&pinctrl {
+	spi2_epd_default: spi2_epd_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 1, 13)>,
+				<NRF_PSEL(SPIM_MOSI, 0, 10)>;
+		};
+	};
+
+	spi2_epd_sleep: spi2_epd_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 1, 13)>,
+				<NRF_PSEL(SPIM_MOSI, 0, 10)>;
+			low-power-enable;
+		};
+	};
+};
+
+/*
+ * EasyDMA SPIM rather than the board's byte-interrupt SPI, so a 15 kB plane is
+ * one transfer. Chip select must be declared here as cs-gpios with a child
+ * device: Zephyr compiles GPIO chip-select support out entirely unless some SPI
+ * controller node carries cs-gpios.
+ */
+&spi2 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	pinctrl-0 = <&spi2_epd_default>;
+	pinctrl-1 = <&spi2_epd_sleep>;
+	pinctrl-names = "default", "sleep";
+	cs-gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
+
+	epd: epd@0 {
+		compatible = "espaper,ssd1683";
+		reg = <0>;
+		spi-max-frequency = <4000000>;
+	};
+};
+
+&uart0 {
+	status = "disabled";
+};
+
+&i2c0 {
+	status = "disabled";
+};
+
+&i2c1 {
+	status = "disabled";
+};
+
+&pwm0 {
+	status = "disabled";
+};
+
+&ieee802154 {
+	status = "disabled";
+};

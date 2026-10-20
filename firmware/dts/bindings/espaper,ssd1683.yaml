@@ -1,0 +1,5 @@
+description: SSD1683 e-paper controller, driven directly over SPI by the espaper firmware
+
+compatible: "espaper,ssd1683"
+
+include: spi-device.yaml

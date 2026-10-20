@@ -1,12 +1,13 @@
-# ESPaper Uploader
+# nRF E-Paper
 
-A Home Assistant integration for the [BLE e-paper display](../README.md): an
-ESP32-H2 driving a 400×300 monochrome panel.
+A BLE e-paper display — a Pro Micro nRF52840 driving a 400×300 SSD1683 panel —
+and the Home Assistant integration that feeds it Markdown. Firmware, wiring,
+flashing and the protocol: [`firmware/README.md`](firmware/README.md).
 
 You get a **text entity**, a **dashboard card**, a **switch** and a
 **connectivity sensor**. Put Markdown in either box, and the integration renders
-it — antialiased, in the panel's four grey levels — and pushes it the next time
-the panel wakes up. Once the panel is showing the current text, nothing further
+it — antialiased, in the panel's four grey levels — and pushes it to the panel
+as soon as it can catch it. Once the panel is showing the current text, nothing further
 happens — no polling, no reconnecting — until you change the text again.
 
 <p align="center">
@@ -26,27 +27,24 @@ Pick up on the way home from **Netto**, before 8pm.
 - [x] ~~Bread~~ got it yesterday
 
 ## Notes
-> The panel refreshes about once a minute, and holds the image with no power.
+> The panel holds the image with no power.
 ```
 
 ## Why it works this way
 
-The board advertises for about two seconds and then deep-sleeps for a minute, so
-an upload cannot be scheduled — it has to be caught, and only while the
-integration actually owes the panel a frame. An update therefore lands within
-about one sleep cycle (~60 s by default), and a failed transfer simply retries on
-the next wake.
+The board advertises once every second or so and is connectable all the time,
+but Home Assistant only learns of it through those adverts, so an upload has to
+be caught — and only while the integration actually owes the panel a frame. An
+update usually lands within seconds, and a failed transfer simply retries.
 
 Catching it means waiting, not reacting. An advertisement that has reached Home
-Assistant is already old news — a good part of the two seconds is gone by the
-time anything can act on it. But a connect attempt is not an instant thing: the
+Assistant is already old news by the time anything can act on it. But a connect attempt is not an instant thing: the
 request stays *pending* for about twenty seconds, and the Bluetooth controller
 latches onto the panel's first advertisement in hardware. So the integration
 simply holds a net open — opening the next attempt as each one expires, with no
 gap between them — and lets the panel walk into it. There is no prediction of
-the next wake: the phase of the last sighting, the learned advertising interval
-and the panel's own clock all drift, and a mis-aimed net used to cost a full
-cycle. Twenty seconds is not a choice, either: `bleak-retry-connector` and
+the next advert: the phase of the last sighting, the advertising interval and
+the panel's own clock all drift. Twenty seconds is not a choice, either: `bleak-retry-connector` and
 ESPHome's `esp32_ble` both fix a connection attempt at 20 s, on purpose, to
 match each other.
 
@@ -77,14 +75,14 @@ panel and stays quiet if they match.
 ## Install
 
 **HACS** → three-dot menu → *Custom repositories* → add
-`https://github.com/n0n3m4/espaper-uploader` as an *Integration*, then install
+`https://github.com/n0n3m4/nrf-epaper` as an *Integration*, then install
 and restart Home Assistant.
 
 Or copy `custom_components/espaper` into your `config/custom_components/`.
 
 The panel is then auto-discovered (it advertises its vendor service UUID) and
-shows up as a Bluetooth discovery in **Settings → Devices & Services** within a
-wake cycle. There is no pairing and no token.
+shows up as a Bluetooth discovery in **Settings → Devices & Services** within
+seconds. There is no pairing and no token.
 
 ## Use
 
@@ -378,9 +376,8 @@ The frame is deflated whenever that comes out smaller — automatically, decided
 per frame, never configured — which for a page of rendered text means well under
 a fifth of the bytes and of the time on air. That is what keeps 4 colours cheap:
 the raw frame doubles to 30000 bytes, but large flat white areas compress, so
-what actually goes over the radio grows far less. The panel
-is only awake ~2 s a minute, so a shorter upload is also a likelier one. The
-firmware inflates it from the ESP32-H2 ROM's copy of miniz; if it ever reports
+what actually goes over the radio grows far less. The
+firmware inflates it with miniz; if it ever reports
 `err=INFLATE` the stream passed its CRC but did not decompress, which means the
 two sides disagree about the format rather than that the radio dropped
 something.
@@ -411,6 +408,7 @@ the logs.
 ```sh
 python test_render.py       # layout and packing; needs only Pillow
 python test_coordinator.py  # the upload-once latch; needs homeassistant importable
+python test_frontend.py     # card registration; needs homeassistant importable
 node test_card.mjs          # the card's sync rule; needs only node
 ```
 

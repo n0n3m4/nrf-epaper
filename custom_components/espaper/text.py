@@ -73,7 +73,7 @@ class EPaperText(RestoreEntity, TextEntity):
             "upload_status": self.coordinator.status,
             "last_error": self.coordinator.last_error,
             "last_upload": self.coordinator.last_upload,
-            # Not "awake" -- the panel is awake ~2 s a minute. This is whether
+            # Not "connected" -- it almost never is. This is whether
             # it has been heard from recently enough to be worth sending to.
             "online": self.coordinator.online,
             "last_seen": self.coordinator.last_seen,

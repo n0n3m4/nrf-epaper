@@ -1,6 +1,6 @@
 {
   "domain": "espaper",
-  "name": "ESPaper Uploader",
+  "name": "nRF E-Paper",
   "bluetooth": [
     {
       "service_uuid": "69770000-b271-453a-a64d-cb31cec14bee",
@@ -10,10 +10,10 @@
   "codeowners": ["@n0n3m4"],
   "config_flow": true,
   "dependencies": ["bluetooth_adapters", "frontend", "lovelace"],
-  "documentation": "https://github.com/n0n3m4/espaper-uploader",
+  "documentation": "https://github.com/n0n3m4/nrf-epaper",
   "integration_type": "device",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/n0n3m4/espaper-uploader/issues",
+  "issue_tracker": "https://github.com/n0n3m4/nrf-epaper/issues",
   "requirements": ["bleak-retry-connector>=3.5.0", "Pillow>=10.1.0"],
-  "version": "0.2.0"
+  "version": "0.3.0"
 }
