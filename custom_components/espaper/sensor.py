@@ -5,6 +5,8 @@ Firmware that does not advertise it leaves both sensors unknown.
 
 from __future__ import annotations
 
+from bisect import bisect
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -16,10 +18,19 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import EPaperConfigEntry
 
-# Calibration knobs: the cell's empty and full voltages.
-# ponytail: linear LiPo curve, swap for a lookup table if % reads wrong mid-range.
-BATTERY_EMPTY_MV = 3300
-BATTERY_FULL_MV = 4200
+# Calibration knob: a resting LiPo's open-circuit voltage at 0, 10 ... 100 %,
+# Meshtastic's OCV_ARRAY reversed. Linear between points.
+BATTERY_OCV_MV = (3100, 3300, 3420, 3530, 3630, 3720, 3800, 3890, 3990, 4050, 4190)
+
+
+def battery_percent(mv: int) -> int:
+    i = bisect(BATTERY_OCV_MV, mv)
+    if i == 0:
+        return 0
+    if i == len(BATTERY_OCV_MV):
+        return 100
+    lo, hi = BATTERY_OCV_MV[i - 1], BATTERY_OCV_MV[i]
+    return round((i - 1 + (mv - lo) / (hi - lo)) * 10)
 
 
 async def async_setup_entry(
@@ -57,8 +68,7 @@ class EPaperBattery(_EPaperSensor):
     def native_value(self) -> int | None:
         if (mv := self.coordinator.battery_mv) is None:
             return None
-        pct = (mv - BATTERY_EMPTY_MV) * 100 // (BATTERY_FULL_MV - BATTERY_EMPTY_MV)
-        return max(0, min(100, pct))
+        return battery_percent(mv)
 
 
 class EPaperVoltage(_EPaperSensor):

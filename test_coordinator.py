@@ -26,6 +26,7 @@ from custom_components.espaper.coordinator import (  # noqa: E402
     expand_escapes,
 )
 from custom_components.espaper.render import render_markdown  # noqa: E402
+from custom_components.espaper.sensor import battery_percent  # noqa: E402
 from custom_components.espaper.epaper import EPaperError  # noqa: E402
 
 ADDRESS = "AA:BB:CC:DD:EE:FF"
@@ -208,6 +209,16 @@ async def test_battery_comes_from_the_advert():
     info.manufacturer_data = {0xFFFF: b"IC\x01" + bytes(14)}
     coordinator._async_on_advertisement(info, MagicMock())
     assert coordinator.battery_mv == 3987
+
+
+def test_battery_percent_follows_the_ocv_table():
+    assert battery_percent(0) == 0
+    assert battery_percent(3100) == 0
+    assert battery_percent(3800) == 60
+    assert battery_percent(3845) == 65
+    assert battery_percent(4090) == 93
+    assert battery_percent(4190) == 100
+    assert battery_percent(4400) == 100
 
 
 async def test_edit_during_upload_is_not_lost():

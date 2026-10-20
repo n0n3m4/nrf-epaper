@@ -68,7 +68,7 @@ A `binary_sensor` reports that online/offline state, and the text entity carries
 it as the `online` and `last_seen` attributes. Text can still be set while the
 panel is offline — that is exactly when queueing it matters.
 
-**Battery** (%, linear 3.3–4.2 V) and **Battery voltage** (mV) come from the
+**Battery** (%, from Meshtastic's LiPo open-circuit table, 3.1–4.19 V) and **Battery voltage** (mV) come from the
 panel's advertisement, measured once a minute — no connection needed. Firmware
 older than this feature does not advertise it, and both stay *unknown*.
 

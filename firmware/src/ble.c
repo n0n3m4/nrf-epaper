@@ -155,12 +155,16 @@ int ble_adv_start(void)
 void ble_update_battery(void)
 {
   static bool s_ready;
+  static unsigned s_reads;
   if (!s_ready)
   {
     s_ready = adc_channel_setup_dt(&s_vbat) == 0;
   }
   int16_t raw = 0;
-  struct adc_sequence seq = {.buffer = &raw, .buffer_size = sizeof(raw)};
+  // Offset calibration on the first read and every 10th after: it drifts with
+  // temperature, and once a minute would be wasted.
+  struct adc_sequence seq = {
+      .buffer = &raw, .buffer_size = sizeof(raw), .calibrate = s_reads++ % 10 == 0};
   adc_sequence_init_dt(&s_vbat, &seq);
   if (!s_ready || adc_read_dt(&s_vbat, &seq) != 0)
   {
