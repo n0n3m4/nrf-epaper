@@ -6,3 +6,4 @@ venv/
 /*.ttf
 /*.png
 firmware/build/
+CLAUDE.md
