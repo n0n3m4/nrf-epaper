@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Push an image to the BLE e-paper display.
 
-The board advertises continuously, but only every 1-1.5 s, so the scan
+The board advertises continuously, but only every 2 s, so the scan
 timeout needs some headroom.
 
     python firmware/tools/epaper_push.py photo.png

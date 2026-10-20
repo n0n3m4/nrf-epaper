@@ -2,8 +2,10 @@
 
 #include <string.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/regulator.h>
 #include <zephyr/drivers/spi.h>
 #include <zephyr/kernel.h>
+#include <zephyr/pm/device.h>
 #include <zephyr/sys/printk.h>
 
 #include "epd_gray_lut.h"
@@ -21,6 +23,8 @@ static const struct spi_dt_spec s_spi =
 static const struct gpio_dt_spec s_dc = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), dc_gpios);
 static const struct gpio_dt_spec s_rst = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), reset_gpios);
 static const struct gpio_dt_spec s_busy = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), busy_gpios);
+static const struct device *const s_vcc = DEVICE_DT_GET(DT_NODELABEL(vcc_ext));
+#define VCC_STARTUP_MS (DT_PROP(DT_NODELABEL(vcc_ext), startup_delay_us) / 1000)
 
 // One 1bpp plane, in RAM because EasyDMA cannot read flash. It is the splash
 // framebuffer, the inverted copy of a 1bpp frame, and each 2bpp plane in turn.
@@ -75,10 +79,44 @@ static bool wait_busy(void)
   return true;
 }
 
-// Hardware reset then software reset, waiting out BUSY after each -- the two
-// waits GxEPD2 skips and the nRF sketch this was checked against does not.
+// --- power ------------------------------------------------------------------
+
+// The panel is unpowered between refreshes: SSD1683 datasheet fig. 9-1 ends a
+// refresh with "turn off VCI supply" once BUSY is low, and every paint already
+// starts from a hardware reset and a full init. The order is the trap. Its
+// inputs are rated -0.5 .. VDDIO+0.5 V, so with VCI off any line held high
+// feeds the controller through its ESD diodes (the WeAct module has only 100R
+// in series). So: supply first, then drive the lines; let every line go, then
+// cut the supply. Released lines are inputs with the buffer disconnected, which
+// neither drives the panel nor leaks on the nRF side.
+static void power_on(void)
+{
+  regulator_enable(s_vcc);
+  k_msleep(VCC_STARTUP_MS);  // datasheet: 10 ms after VCI
+  gpio_pin_configure_dt(&s_spi.config.cs.gpio, GPIO_OUTPUT_INACTIVE);
+  gpio_pin_configure_dt(&s_dc, GPIO_OUTPUT_INACTIVE);
+  gpio_pin_configure_dt(&s_rst, GPIO_OUTPUT_INACTIVE);  // inactive = not in reset
+  gpio_pin_configure_dt(&s_busy, GPIO_INPUT);
+  pm_device_action_run(s_spi.bus, PM_DEVICE_ACTION_RESUME);  // SCK, MOSI back
+}
+
+static void power_off(void)
+{
+  // The sleep pinctrl state (low-power-enable) releases SCK and MOSI.
+  pm_device_action_run(s_spi.bus, PM_DEVICE_ACTION_SUSPEND);
+  gpio_pin_configure_dt(&s_spi.config.cs.gpio, GPIO_DISCONNECTED);
+  gpio_pin_configure_dt(&s_dc, GPIO_DISCONNECTED);
+  gpio_pin_configure_dt(&s_rst, GPIO_DISCONNECTED);
+  gpio_pin_configure_dt(&s_busy, GPIO_DISCONNECTED);
+  regulator_disable(s_vcc);
+}
+
+// Power, then hardware reset then software reset, waiting out BUSY after each
+// -- the two waits GxEPD2 skips and the nRF sketch this was checked against
+// does not.
 static void wake(void)
 {
+  power_on();
   gpio_pin_set_dt(&s_rst, 0);
   k_msleep(10);
   gpio_pin_set_dt(&s_rst, 1);
@@ -308,7 +346,7 @@ void epd_splash(const char *text)
   epd_render_1bpp(s_plane, false);
 }
 
-// --- power ------------------------------------------------------------------
+// --- sleep ------------------------------------------------------------------
 
 void epd_sleep(void)
 {
@@ -316,19 +354,23 @@ void epd_sleep(void)
   {
     return;
   }
-  CMD(0x10, 0x01);  // deep sleep; both refresh sequences above already power off
+  // Deep sleep, then the supply. Both refresh sequences above already end with
+  // analog and clock off, so this is belt and braces before VCI goes.
+  CMD(0x10, 0x01);
   k_msleep(100);
+  power_off();
   s_awake = false;
 }
 
+// The regulator is boot-on, so the panel is powered while the SPI driver drives
+// CS high at init; this is the first point that can release the lines and cut it.
 int epd_init(void)
 {
-  if (!spi_is_ready_dt(&s_spi))
+  if (!spi_is_ready_dt(&s_spi) || !device_is_ready(s_vcc) || !gpio_is_ready_dt(&s_dc) ||
+      !gpio_is_ready_dt(&s_rst) || !gpio_is_ready_dt(&s_busy))
   {
     return -ENODEV;
   }
-  int err = gpio_pin_configure_dt(&s_dc, GPIO_OUTPUT_INACTIVE);
-  err = err ? err : gpio_pin_configure_dt(&s_rst, GPIO_OUTPUT_INACTIVE);  // inactive = not in reset
-  err = err ? err : gpio_pin_configure_dt(&s_busy, GPIO_INPUT);
-  return err;
+  power_off();
+  return 0;
 }

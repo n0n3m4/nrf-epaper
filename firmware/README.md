@@ -20,14 +20,19 @@ WeAct / Waveshare 4.2" SSD1683 panel to the Pro Micro header:
 | DC   | P0.20 | D3 |
 | RST  | P0.22 | D4 |
 | BUSY | P0.24 | D5 |
-| VCC  | VCC pin | switched on by P0.13 at boot |
+| VCC  | VCC pin | switched by P0.13, on only while painting |
 | GND  | GND | |
 
 These avoid everything the bootloader uses (the LED on P0.15, RST on P0.18)
 and leave the board's own UART pins (D0/D1) free. The `VCC` pin on nice!nano
-v2 clones is behind a switch on P0.13; the firmware turns it on at boot through
-a devicetree regulator, so the panel can hang off that pin. Pins live in
-`app.overlay`.
+v2 clones is behind a switch on P0.13, a devicetree regulator here, so the
+panel can hang off that pin. The panel is powered only while it is being
+painted: on, 20 ms, then the control lines; after the refresh and deep sleep,
+every line released (input, buffer disconnected) and then the supply cut. That
+order matters: the SSD1683's inputs are rated to VDDIO + 0.5 V, so a line held
+high into an unpowered panel feeds it through its protection diodes. At boot the
+regulator comes up before the SPI driver drives CS high
+(`CONFIG_REGULATOR_FIXED_INIT_PRIORITY=45`). Pins live in `app.overlay`.
 
 ## Build and flash
 
@@ -75,10 +80,10 @@ Host-side checks, no board and no BLE adapter needed:
 
 ## Power and advertising
 
-The board advertises all the time, slowly, at 1–1.5 s, and never sleeps the
+The board advertises all the time, slowly, every 2 s, and never sleeps the
 radio. The SoftDevice Controller sleeps the CPU and the crystal between advert
 events, so an advert costs only its ~25 µC and the rest is System ON idle at a
-few µA: ~25 µA average, and the panel can be connected at any moment. The
+few µA: ~16 µA average, and the panel can be connected at any moment. The
 interval is `ADV_INTERVAL_*` in `src/config.h`. INFO still carries a
 `sleep_seconds` field (`DEEP_SLEEP_SECONDS`) for clients that use it as a hint.
 

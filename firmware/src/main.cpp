@@ -4,9 +4,9 @@
 // It advertises all the time, slowly, instead of a 2 s burst every 60 s with
 // deep sleep in between: the SoftDevice Controller sleeps the CPU and the crystal
 // between advert events, so an advert costs only its ~25 uC and the rest is
-// System ON idle at a few uA. Continuous 1-1.5 s adverts are ~25 uA average,
-// about what a 4 s window every minute would cost, and the panel is connectable
-// at any moment instead of for 3 % of the time. main() runs once, forever.
+// System ON idle at a few uA. Continuous 2 s adverts are ~16 uA average, less
+// than a 4 s window every minute would cost, and the panel is connectable at
+// any moment instead of for 3 % of the time. main() runs once, forever.
 
 #include <zephyr/drivers/flash.h>
 #include <zephyr/drivers/hwinfo.h>

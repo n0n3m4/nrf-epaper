@@ -3,7 +3,7 @@
  *
  *   SCK  P1.13  D15      CS   P0.17  D2      RST  P0.22  D4
  *   MOSI P0.10  D16      DC   P0.20  D3      BUSY P0.24  D5
- *   VCC pin, switched on by P0.13
+ *   VCC pin, switched by P0.13
  *
  * None of these are touched by the Adafruit bootloader (LED P0.15, RST P0.18)
  * and the board's own UART pins (P0.06/P0.08) stay free. P0.10 is uart0's RX
@@ -54,7 +54,11 @@
 		io-channels = <&adc 0>;
 	};
 
-	/* The VCC header pin is behind a switch on P0.13; on means the panel has power. */
+	/*
+	 * The VCC header pin is behind a switch on P0.13; on means the panel has
+	 * power. On at boot, then epd.c powers the panel only while painting it;
+	 * startup-delay-us is the wait it gives after switching on.
+	 */
 	vcc_ext: regulator-vcc-ext {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc-ext";

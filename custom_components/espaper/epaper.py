@@ -323,7 +323,7 @@ if __name__ == "__main__":
             del argv[i : i + 2]
         args = [a for a in argv if a != "--mono"]
         text = Path(args[0]).read_text() if args else "# Hello"
-        # The board advertises every 1-1.5 s; the timeout is generous headroom.
+        # The board advertises every 2 s; the timeout is generous headroom.
         device = await BleakScanner.find_device_by_filter(
             lambda _d, adv: SVC_UUID.lower() in [u.lower() for u in adv.service_uuids],
             timeout=90.0,

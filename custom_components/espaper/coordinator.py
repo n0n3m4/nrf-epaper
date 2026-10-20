@@ -1,6 +1,6 @@
 """Renders Markdown and pushes it the next time the panel can be caught.
 
-The board advertises every 1-1.5 s, and HA only hears of it through adverts
+The board advertises every 2 s, and HA only hears of it through adverts
 that are stale by the time they arrive, so an upload cannot be scheduled
 against the panel -- but it does not have to be. A connect attempt
 is a 20 s net rather than an instant: the controller holds the request pending

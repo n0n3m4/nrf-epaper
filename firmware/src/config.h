@@ -23,12 +23,12 @@ static const uint16_t PANEL_STRIDE_GRAY4 = PANEL_WIDTH / 4;
 static const uint32_t PANEL_FRAME_BYTES_GRAY4 = uint32_t(PANEL_STRIDE_GRAY4) * PANEL_HEIGHT;
 
 // ---------------------------------------------------------------------------
-// Advertising. Continuous, connectable, 1.0-1.5 s on air (0.625 ms units):
+// Advertising. Continuous, connectable, every 2 s (0.625 ms units):
 // the SoftDevice Controller sleeps the CPU and the crystal between events, so
 // only the events cost; see the top of main.cpp.
 // ---------------------------------------------------------------------------
-static const uint16_t ADV_INTERVAL_MIN = 1600;
-static const uint16_t ADV_INTERVAL_MAX = 2400;
+static const uint16_t ADV_INTERVAL_MIN = 3200;
+static const uint16_t ADV_INTERVAL_MAX = 3200;
 
 // Reported in INFO as sleep_seconds, the client's hint for how long the panel
 // may go unheard. There is no sleep any more; the field is kept for the wire.
