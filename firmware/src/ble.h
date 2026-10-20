@@ -23,6 +23,10 @@ int ble_begin(const char *name, uint16_t adv_min, uint16_t adv_max, const uint8_
 // it after a disconnect, so the caller does. Returns bt_le_adv_start()'s errno.
 int ble_adv_start(void);
 
+// Reads the battery (VDDH/5 on the SAADC) into the advert's manufacturer data.
+// Main thread only.
+void ble_update_battery(void);
+
 bool ble_connected(void);
 void ble_disconnect(void);
 

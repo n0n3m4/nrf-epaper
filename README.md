@@ -4,8 +4,8 @@ A BLE e-paper display — a Pro Micro nRF52840 driving a 400×300 SSD1683 panel 
 and the Home Assistant integration that feeds it Markdown. Firmware, wiring,
 flashing and the protocol: [`firmware/README.md`](firmware/README.md).
 
-You get a **text entity**, a **dashboard card**, a **switch** and a
-**connectivity sensor**. Put Markdown in either box, and the integration renders
+You get a **text entity**, a **dashboard card**, a **switch**, a
+**connectivity sensor** and **battery sensors**. Put Markdown in either box, and the integration renders
 it — antialiased, in the panel's four grey levels — and pushes it to the panel
 as soon as it can catch it. Once the panel is showing the current text, nothing further
 happens — no polling, no reconnecting — until you change the text again.
@@ -67,6 +67,10 @@ after the panel returns — no attempt limit, nothing to retrigger by hand.
 A `binary_sensor` reports that online/offline state, and the text entity carries
 it as the `online` and `last_seen` attributes. Text can still be set while the
 panel is offline — that is exactly when queueing it matters.
+
+**Battery** (%, linear 3.3–4.2 V) and **Battery voltage** (mV) come from the
+panel's advertisement, measured once a minute — no connection needed. Firmware
+older than this feature does not advertise it, and both stay *unknown*.
 
 E-paper holds its image without power, so after a Home Assistant restart the
 integration compares the restored text with the text it last confirmed on the

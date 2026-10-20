@@ -4,14 +4,14 @@
     "step": {
       "user": {
         "title": "Add an ESPaper display",
-        "description": "Pick the panel to control. It only advertises for a couple of seconds every minute, so it may take a moment to appear.",
+        "description": "Pick the panel to control.",
         "data": {
           "address": "Bluetooth device"
         }
       },
       "bluetooth_confirm": {
         "title": "Set up {name}",
-        "description": "Add {name}? A text entity will be created; whatever Markdown you put in it is rendered and uploaded the next time the panel wakes."
+        "description": "Add {name}? A text entity will be created; whatever Markdown you put in it is rendered and uploaded to the panel."
       }
     },
     "abort": {
@@ -23,6 +23,14 @@
     "binary_sensor": {
       "connectivity": {
         "name": "Panel"
+      }
+    },
+    "sensor": {
+      "battery": {
+        "name": "Battery"
+      },
+      "voltage": {
+        "name": "Battery voltage"
       }
     },
     "switch": {

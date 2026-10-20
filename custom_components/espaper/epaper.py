@@ -37,6 +37,18 @@ PROTOCOL_VERSION = 1
 MAGIC = b"EPD1"
 OP_BEGIN, OP_COMMIT, OP_ABORT, OP_CLEAR = 1, 2, 3, 4
 
+# Advert manufacturer data, after the company ID (firmware src/ble.c): magic
+# "EP", advert version, battery mV u16. Firmware before it advertises none.
+ADV_COMPANY = 0xFFFF
+ADV_PREFIX = b"EP\x01"
+
+
+def decode_battery_mv(mfg: bytes | None) -> int | None:
+    """Battery mV from the advert's manufacturer data; None if absent or not ours."""
+    if not mfg or len(mfg) < 5 or mfg[:3] != ADV_PREFIX:
+        return None
+    return int.from_bytes(mfg[3:5], "little") or None  # 0: never measured
+
 STATE_NAMES = {
     0: "IDLE",
     1: "RECEIVING",

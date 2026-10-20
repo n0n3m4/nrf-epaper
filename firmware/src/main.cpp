@@ -200,6 +200,8 @@ int main()
     epd_splash(DEVICE_NAME "\nready\n \nsend an image");
   }
 
+  ble_update_battery();
+  int64_t nextBattery = k_uptime_get() + BATTERY_PERIOD_MS;
   while (true)
   {
     s_rx.abort();
@@ -214,9 +216,17 @@ int main()
       continue;
     }
 
+    // Only a connection ends the wait; the timeout is the battery's cadence.
+    // Never measured mid-session, so a panel refresh does not sag the reading.
     while (!ble_connected())
     {
-      ble_wait(60000);  // any timeout; only a connection ends the wait
+      const int64_t now = k_uptime_get();
+      if (now >= nextBattery)
+      {
+        ble_update_battery();
+        nextBattery = now + BATTERY_PERIOD_MS;
+      }
+      ble_wait(uint32_t(nextBattery - now));
     }
 
     serveSession();

@@ -34,7 +34,7 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, MANUFACTURER, MODEL
-from .epaper import EPaperDisplay, EPaperError
+from .epaper import ADV_COMPANY, EPaperDisplay, EPaperError, decode_battery_mv
 from .render import render_markdown
 
 _LOGGER = logging.getLogger(__name__)
@@ -101,6 +101,8 @@ class EPaperCoordinator:
         # connecting to. Not whether it is connected -- it almost never is.
         self.online = False
         self.last_seen: datetime | None = None
+        # From the advert; None until one carries it (older firmware never does).
+        self.battery_mv: int | None = None
 
         # Monotonic stamp of the last attempt, for the MIN_DELAY rate limit,
         # and of the last connection the panel actually answered.
@@ -261,13 +263,17 @@ class EPaperCoordinator:
 
         This cannot be the retry mechanism. Home Assistant drops an
         advertisement whose name, service UUIDs, service data and manufacturer
-        data all match the previous one, and this board advertises a constant
-        payload, so after the first sighting this callback essentially stops
-        firing. It is kept because when it does fire the panel is awake this
+        data all match the previous one, and this board's payload changes only
+        with its battery reading, so after the first sighting this callback
+        fires rarely. It is kept because when it does fire the panel is awake this
         instant, which beats any prediction; _schedule_retry is what actually
         guarantees delivery.
         """
         self._device = service_info.device
+        mv = decode_battery_mv(service_info.manufacturer_data.get(ADV_COMPANY))
+        if mv is not None and mv != self.battery_mv:
+            self.battery_mv = mv
+            self._notify()
         _LOGGER.debug(
             "espaper %s: advertisement seen, status=%s", self.address, self.status
         )

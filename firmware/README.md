@@ -94,6 +94,19 @@ interval is `ADV_INTERVAL_*` in `src/config.h`. INFO still carries a
 
 ## Protocol
 
+**Advertising** — alongside the service UUID, manufacturer data, company
+`0xFFFF`, little-endian:
+
+| Offset | Type | Field |
+|---|---|---|
+| 0 | 2×u8 | magic `'E' 'P'` |
+| 2 | u8 | advert version (1) |
+| 3 | u16 | battery mV (0 = not measured) |
+
+Battery is read as VDDH/5 by the SAADC, at boot and then every minute while no
+client is connected: on nice!nano v2 clones B+ feeds VDDH directly. A board
+powered through the 3.3 V pin instead reports ~3.3 V.
+
 Service `69770000-b271-453a-a64d-cb31cec14bee`, all values little-endian.
 
 | Characteristic | UUID suffix | Properties |
@@ -218,7 +231,7 @@ not. Partial refresh is unavailable in 4-grey; it is a full refresh.
 | `src/main.cpp` | main loop, session watchdog, painted flag; wraps `ImageReceiver` |
 | `src/image_receiver.*` | BEGIN/DATA/COMMIT state machine and validation |
 | `src/crc32.*` | zlib-compatible CRC-32 |
-| `src/ble.c` | GATT service and advertising |
+| `src/ble.c` | GATT service, advertising, battery reading |
 | `src/epd.c` | SSD1683 over SPI: 1bpp, 2bpp, clear, splash, sleep |
 | `src/epd_gray_lut.h` | the greyscale waveform and plane packing |
 | `src/font5x7.h` | Adafruit GFX classic 5x7 font for the splash |

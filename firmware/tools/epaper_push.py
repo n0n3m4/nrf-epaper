@@ -32,6 +32,18 @@ PROTOCOL_VERSION = 1
 MAGIC = b"EPD1"
 
 OP_BEGIN, OP_COMMIT, OP_ABORT, OP_CLEAR = 1, 2, 3, 4
+
+# Advert manufacturer data, after the company ID (firmware src/ble.c): magic
+# "EP", advert version, battery mV u16. Firmware before it advertises none.
+ADV_COMPANY = 0xFFFF
+ADV_PREFIX = b"EP\x01"
+
+
+def decode_battery_mv(mfg: bytes | None) -> int | None:
+    """Battery mV from the advert's manufacturer data; None if absent or not ours."""
+    if not mfg or len(mfg) < 5 or mfg[:3] != ADV_PREFIX:
+        return None
+    return int.from_bytes(mfg[3:5], "little") or None  # 0: never measured
 FLAG_INVERTED = 1 << 0
 FLAG_GRAY4 = 1 << 1
 FLAG_DEFLATE = 1 << 2
@@ -230,9 +242,13 @@ async def find_device(name, address, scan_timeout):
     print(f"scanning for {name!r} (up to {scan_timeout:.0f}s)...", file=sys.stderr)
 
     def match(device, adv):
-        if name and (adv.local_name == name or device.name == name):
-            return True
-        return SVC_UUID.lower() in [u.lower() for u in adv.service_uuids]
+        hit = (name and (adv.local_name == name or device.name == name)) or (
+            SVC_UUID.lower() in [u.lower() for u in adv.service_uuids]
+        )
+        mv = decode_battery_mv(adv.manufacturer_data.get(ADV_COMPANY))
+        if hit and mv is not None:
+            print(f"battery {mv} mV", file=sys.stderr)
+        return hit
 
     return await BleakScanner.find_device_by_filter(match, timeout=scan_timeout)
 

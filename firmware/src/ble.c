@@ -5,7 +5,9 @@
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/uuid.h>
+#include <zephyr/drivers/adc.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/byteorder.h>
 
 // The same UUIDs as SVC_UUID_IMAGE and friends in config.h. Zephyr's
 // static GATT table needs them as numbers, so this is the one place the
@@ -119,12 +121,20 @@ BT_CONN_CB_DEFINE(s_conn_cbs) = {
     .disconnected = on_disconnected,
 };
 
-// The 128-bit UUID plus flags fills most of the 31-byte advert, so the name
-// goes into the scan response.
+// Manufacturer data: company 0xFFFF (testing), magic "EP", advert version 1,
+// then battery mV (u16). Change custom_components/espaper/epaper.py and
+// tools/epaper_push.py with it.
+static uint8_t s_mfg[7] = {0xFF, 0xFF, 'E', 'P', 1};
+
+// Flags, the 128-bit UUID and the manufacturer data take 30 of the advert's 31
+// bytes, so the name goes into the scan response.
 static const struct bt_data s_ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR),
     BT_DATA_BYTES(BT_DATA_UUID128_ALL, EPAPER_UUID(0x0000)),
+    BT_DATA(BT_DATA_MANUFACTURER_DATA, s_mfg, sizeof(s_mfg)),
 };
+
+static const struct adc_dt_spec s_vbat = ADC_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), 0);
 
 int ble_begin(const char *name, uint16_t adv_min, uint16_t adv_max, const uint8_t info[8])
 {
@@ -140,6 +150,28 @@ int ble_adv_start(void)
 {
   touch();
   return bt_le_adv_start(&s_adv_param, s_ad, ARRAY_SIZE(s_ad), s_sd, ARRAY_SIZE(s_sd));
+}
+
+void ble_update_battery(void)
+{
+  static bool s_ready;
+  if (!s_ready)
+  {
+    s_ready = adc_channel_setup_dt(&s_vbat) == 0;
+  }
+  int16_t raw = 0;
+  struct adc_sequence seq = {.buffer = &raw, .buffer_size = sizeof(raw)};
+  adc_sequence_init_dt(&s_vbat, &seq);
+  if (!s_ready || adc_read_dt(&s_vbat, &seq) != 0)
+  {
+    return;
+  }
+  int32_t mv = raw;
+  adc_raw_to_millivolts_dt(&s_vbat, &mv);
+  sys_put_le16((uint16_t)CLAMP(mv * 5, 0, UINT16_MAX), &s_mfg[5]);  // VDDH/5
+  // Not advertising (connected, or not started yet) fails harmlessly: the next
+  // ble_adv_start() carries the new value.
+  bt_le_adv_update_data(s_ad, ARRAY_SIZE(s_ad), s_sd, ARRAY_SIZE(s_sd));
 }
 
 bool ble_connected(void)

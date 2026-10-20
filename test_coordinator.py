@@ -191,6 +191,25 @@ async def test_failure_retries_on_next_advertisement():
     assert coordinator.last_error is None
 
 
+async def test_battery_comes_from_the_advert():
+    coordinator, _ = build()
+    advertise(coordinator)
+    assert coordinator.battery_mv is None, "older firmware advertises no battery"
+    heard = []
+    coordinator.async_add_listener(lambda: heard.append(coordinator.battery_mv))
+
+    info = MagicMock()
+    info.manufacturer_data = {0xFFFF: b"EP\x01" + (3987).to_bytes(2, "little")}
+    coordinator._async_on_advertisement(info, MagicMock())
+    assert coordinator.battery_mv == 3987
+    assert heard == [3987], "the sensors were not told"
+
+    # Another device's data under the same testing company ID is not ours.
+    info.manufacturer_data = {0xFFFF: b"IC\x01" + bytes(14)}
+    coordinator._async_on_advertisement(info, MagicMock())
+    assert coordinator.battery_mv == 3987
+
+
 async def test_edit_during_upload_is_not_lost():
     coordinator, display = build()
     started = asyncio.Event()

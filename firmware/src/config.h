@@ -34,6 +34,9 @@ static const uint16_t ADV_INTERVAL_MAX = 2400;
 // may go unheard. There is no sleep any more; the field is kept for the wire.
 static const uint32_t DEEP_SLEEP_SECONDS  = 60;
 
+// How often the battery is measured into the advert, while idle.
+static const uint32_t BATTERY_PERIOD_MS = 60000;
+
 // A client that connects and then stalls would otherwise hold the session
 // open forever.
 static const uint32_t SESSION_TIMEOUT_MS = 60000;
